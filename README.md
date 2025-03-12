@@ -16,5 +16,4 @@ key=aabb33  #密码
 如果放在外网用，有略胜于无
 id=  #后面是单号，小程序回自动添加。
 
-![配套小程序]([/assets/img/philly-magic-garden.jpg](https://raw.githubusercontent.com/huoban/expressID/refs/heads/main/%E9%85%8D%E5%A5%97%E5%B0%8F%E7%A8%8B%E5%BA%8F.png) "配套小程序")
-
+![配套小程序](https://raw.githubusercontent.com/huoban/expressID/refs/heads/main/%E9%85%8D%E5%A5%97%E5%B0%8F%E7%A8%8B%E5%BA%8F.png)
