@@ -1,5 +1,6 @@
 <?php
-
+//savid_Class.php 快递公司划分
+require_once "./savid_Class.php";
 // 配置项
 $localVerificationCode = "aabb33"; // 本地验证码对照值
 $dbFilePath = 'log/express.db'; // SQLite3 数据库文件路径
@@ -17,20 +18,31 @@ if ($receivedVerificationCode !== $localVerificationCode) {
 $db = new SQLite3($dbFilePath);
 
 // 创建日志表（如果不存在）
-$db->exec("CREATE TABLE IF NOT EXISTS logs (id TEXT PRIMARY KEY, timestamp TEXT)");
+$db->exec("CREATE TABLE IF NOT EXISTS logs (id TEXT PRIMARY KEY, timestamp TEXT, company_name TEXT)");
+
+// 判断快递公司
+$identifier = new LogisticsIdentifier($KDId);
+$companyName = $identifier->identifyLogisticsCompany();
 
 // 检查 KDId 是否已存在于数据库中
 if (checkKDIdExistsInDB($KDId, $db)) {
-    $ShuChu = "✖✖重复✖✖";
+    $ShuChu = "✖重复✖" . $companyName;
     $messageClass = "error"; // 设置消息框的样式类
 } else {
-    // 处理逻辑，记录日志
-    $stmt = $db->prepare("INSERT INTO logs (id, timestamp) VALUES (:id, :timestamp)");
+    // 插入日志记录
+    $stmt = $db->prepare("INSERT INTO logs (id, timestamp, company_name) VALUES (:id, :timestamp, :company_name)");
     $stmt->bindValue(':id', $KDId, SQLITE3_TEXT);
     $stmt->bindValue(':timestamp', date("Y-m-d H:i:s"), SQLITE3_TEXT);
+    $stmt->bindValue(':company_name', $companyName, SQLITE3_TEXT);
     $stmt->execute();
-    $ShuChu = "成功";
-    $messageClass = "success"; // 设置消息框的样式类
+
+    if ($companyName !== "") {
+        $ShuChu = $companyName;
+    } else {
+        $ShuChu = "成功-名称未知";
+    }
+
+
 }
 
 // 函数：检查 KDId 是否在数据库中存在
