@@ -7,10 +7,12 @@
 因为一年多时间里签收几百个快递，实际用到查询就1回。
 
 saveid.php SQLite3 数据库版
+savid_Class.php 快递公司名称类
+
 saveid_txt.php  txt版
 
 请求格式如
-http://192.168.50.11/testget/saveid_txt.php?key=aabb33&id=
+http://192.168.50.11/testget/saveid.php?key=aabb33&id=
 
 key=aabb33  #密码
 如果放在外网用，有略胜于无
