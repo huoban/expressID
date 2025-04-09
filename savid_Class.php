@@ -1,41 +1,56 @@
 <?php
-	// 类判断物流公司
-class LogisticsIdentifier {
+/**
+ * 物流公司识别类
+ */
+class LogisticsIdentifier 
+{
     private $text;
 
-    public function __construct($text) {
-        $this->text = $text;
+    public function __construct(string $text) 
+    {
+        $this->text = trim($text);
     }
 
-    private function getTextLength() {
-        return mb_strlen($this->text, 'UTF-8');
-    }
+    /**
+     * 识别物流公司
+     * @return string 物流公司名称或空字符串
+     */
+    public function identify(): string
+    {
+        $length = mb_strlen($this->text, 'UTF-8');
+        $prefix = mb_substr($this->text, 0, 2, 'UTF-8');
+        $firstChar = mb_substr($this->text, 0, 1, 'UTF-8');
 
-    private function getTextLeft($length) {
-        return mb_substr($this->text, 0, $length, 'UTF-8');
-    }
+        // 按长度优先的顺序检查
+        $lengthBased = [
+            15 => [
+                '7' => '申通',
+                '3' => '韵达',
+                '4' => '韵达',
+                '6' => '丹鸟'
+            ],
+            14 => [
+                '7' => '中通'
+            ],
+            13 => [
+                '9' => '邮政-电商特惠',
+                '1' => '邮政-EMS航空',
+                '5' => '邮政-EMS普快'
+            ]
+        ];
 
-    public function identifyLogisticsCompany() {
-        $cd = $this->getTextLength();
-        $zuo1 = $this->getTextLeft(1);
-        $zuo2 = $this->getTextLeft(2);
-
-        if ($cd == 15) {
-            if ($zuo1 == "7") return "申通";
-            elseif ($zuo1 == "3" || $zuo1 == "4") return "韵达";
-            elseif ($zuo1 == "6") return "丹鸟";
-        } elseif ($cd == 14) {
-            if ($zuo1 == "7") return "中通";
-        } elseif ($cd == 13) {
-            if ($zuo1 == "9") return "邮政";
+        if (isset($lengthBased[$length]) && isset($lengthBased[$length][$firstChar])) {
+            return $lengthBased[$length][$firstChar];
         }
 
-        if ($zuo2 == "JD") return "京东";
-        elseif ($zuo2 == "JT") return "极兔";
-        elseif ($zuo2 == "SF") return "顺丰";
-        elseif ($zuo2 == "YT") return "圆通";
+        // 检查前缀
+        $prefixBased = [
+            'JD' => '京东',
+            'JT' => '极兔',
+            'SF' => '顺丰',
+            'YT' => '圆通'
+        ];
 
-        return ""; // 如果没有匹配的物流公司
+        return $prefixBased[$prefix] ?? '';
     }
 }
-?>
