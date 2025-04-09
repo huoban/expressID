@@ -6,10 +6,11 @@
 搜索快递单号问题，数据库里ctrl+F把 
 因为一年多时间里签收几百个快递，实际用到查询就1回。
 
-saveid.php SQLite3 数据库版
-savid_Class.php 快递公司名称类
-
-saveid_txt.php  txt版
+savid_Class.php   快递公司名称类
+-----以下三个版本功能都相同，却别只是css样式-----
+saveid.php        SQLite3 数据库版 有点css样式，其他app调用
+saveid-xcx.php    SQLite3 数据库版 小程序用 无css特效
+saveid_txt.php    txt版 txt数据版 小程序用 无css特效
 
 请求格式如
 http://192.168.50.11/testget/saveid.php?key=aabb33&id=
