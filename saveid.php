@@ -1,58 +1,137 @@
 <?php
-//savid_Class.php 快递公司划分
+// savid_Class.php 快递公司划分
 require_once "./savid_Class.php";
-// 配置项
-$localVerificationCode = "aabb33"; // 本地验证码对照值
-$dbFilePath = 'log/express.db'; // SQLite3 数据库文件路径
 
-// 获取请求参数
-$receivedVerificationCode = $_GET['key']; // 验证码
-$KDId = $_GET['id']; // ID
+class LogisticsService {
+    private const LOCAL_VERIFICATION_CODE = "aabb33";
+    private const DB_FILE_PATH = 'log/monitor.db';
+    
+    private $db;
+    private $kdId;
+    private $companyName;
+    private $message;
+    private $messageClass;
 
-// 验证请求
-if ($receivedVerificationCode !== $localVerificationCode) {
-    exit('BAD REQUEST'); // 不合法请求，直接终止执行
-}
-
-// 创建或打开 SQLite3 数据库
-$db = new SQLite3($dbFilePath);
-
-// 创建日志表（如果不存在）
-$db->exec("CREATE TABLE IF NOT EXISTS logs (id TEXT PRIMARY KEY, timestamp TEXT, company_name TEXT)");
-
-// 判断快递公司
-$identifier = new LogisticsIdentifier($KDId);
-$companyName = $identifier->identifyLogisticsCompany();
-
-// 检查 KDId 是否已存在于数据库中
-if (checkKDIdExistsInDB($KDId, $db)) {
-    $ShuChu = "✖重复✖" . $companyName;
-    $messageClass = "error"; // 设置消息框的样式类
-} else {
-    // 插入日志记录
-    $stmt = $db->prepare("INSERT INTO logs (id, timestamp, company_name) VALUES (:id, :timestamp, :company_name)");
-    $stmt->bindValue(':id', $KDId, SQLITE3_TEXT);
-    $stmt->bindValue(':timestamp', date("Y-m-d H:i:s"), SQLITE3_TEXT);
-    $stmt->bindValue(':company_name', $companyName, SQLITE3_TEXT);
-    $stmt->execute();
-
-    if ($companyName !== "") {
-        $ShuChu = $companyName;
-    } else {
-        $ShuChu = "成功-名称未知";
+    public function __construct(string $receivedVerificationCode, string $kdId) {
+        $this->validateRequest($receivedVerificationCode);
+        $this->kdId = trim($kdId);
+        $this->initializeDatabase();
+        $this->processLogistics();
     }
 
+    private function validateRequest(string $receivedVerificationCode): void {
+        if ($receivedVerificationCode !== self::LOCAL_VERIFICATION_CODE) {
+            exit('BAD REQUEST');
+        }
+    }
 
+    private function initializeDatabase(): void {
+        $this->db = new SQLite3(self::DB_FILE_PATH);
+        $this->db->exec("CREATE TABLE IF NOT EXISTS logs (
+            id TEXT PRIMARY KEY, 
+            timestamp TEXT, 
+            company_name TEXT
+        )");
+    }
+
+    private function processLogistics(): void {
+        $identifier = new LogisticsIdentifier($this->kdId);
+        $this->companyName = $identifier->identify();
+        
+        if ($this->isDuplicate()) {
+            $this->message = "✖重复✖" . $this->companyName;
+            $this->messageClass = "error";
+        } else {
+            $this->saveToDatabase();
+            $this->message = $this->companyName ?: "成功-名称未知";
+            $this->messageClass = "success";
+        }
+    }
+
+    private function isDuplicate(): bool {
+        $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM logs WHERE id = :id");
+        $stmt->bindValue(':id', $this->kdId, SQLITE3_TEXT);
+        $result = $stmt->execute();
+        $row = $result->fetchArray(SQLITE3_ASSOC);
+        return $row['count'] > 0;
+    }
+
+    private function saveToDatabase(): void {
+        $stmt = $this->db->prepare("INSERT INTO logs (id, timestamp, company_name) 
+                                   VALUES (:id, :timestamp, :company_name)");
+        $stmt->bindValue(':id', $this->kdId, SQLITE3_TEXT);
+        $stmt->bindValue(':timestamp', date("Y-m-d H:i:s"), SQLITE3_TEXT);
+        $stmt->bindValue(':company_name', $this->companyName, SQLITE3_TEXT);
+        $stmt->execute();
+    }
+
+    public function getMessage(): string {
+        return $this->message;
+    }
+
+    public function getMessageClass(): string {
+        return $this->messageClass;
+    }
+
+    public function getKdId(): string {
+        return $this->kdId;
+    }
 }
 
-// 函数：检查 KDId 是否在数据库中存在
-function checkKDIdExistsInDB($KDId, $db) {
-    $stmt = $db->prepare("SELECT COUNT(*) as count FROM logs WHERE id = :id");
-    $stmt->bindValue(':id', $KDId, SQLITE3_TEXT);
-    $result = $stmt->execute();
-    $row = $result->fetchArray(SQLITE3_ASSOC);
-    return $row['count'] > 0;
-}
-
-echo $ShuChu;
+// 使用示例
+$service = new LogisticsService($_GET['key'] ?? '', $_GET['id'] ?? '');
 ?>
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>操作反馈</title>
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #f7f7f7; 
+            font-family: Arial, sans-serif; 
+        }
+        #messageBox { 
+            text-align: center; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,.1); 
+            background-color: white; 
+            transition: transform .3s ease-in-out; 
+        }
+        #messageBox.success { color: #28a745; }
+        #messageBox.error { color: #dc3545; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: scale(.9); } 
+            to { opacity: 1; transform: scale(1); } 
+        }
+        #messageBox { animation: fadeIn .5s; }
+    </style>
+</head>
+<body onclick="copyKDId()">
+    <div id="messageBox" class="<?= htmlspecialchars($service->getMessageClass()) ?>">
+        <p style="font-size: 24px;">操作结果：</p>
+        <p style="font-size: 48px;"><?= htmlspecialchars($service->getMessage()) ?></p>
+        <p>单号: <span id="kdIdSpan"><?= htmlspecialchars($service->getKdId()) ?></span></p>
+    </div>
+
+    <script>
+    function copyKDId() {
+        const kdIdSpan = document.getElementById('kdIdSpan');
+        const tempInput = document.createElement('input');
+        tempInput.value = kdIdSpan.innerText;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        alert('单号 已复制到剪贴板');
+    }
+    </script>
+</body>
+</html>
